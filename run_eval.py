@@ -138,9 +138,11 @@ def _capture_output_screenshot(
     """Run an output.py file, wait, then capture a screenshot.
 
     Tries multiple capture strategies in order:
-      1. PIL ImageGrab (Python-only, no system deps)
-      2. xdotool + ImageMagick import (window-specific)
-      3. scrot (focused window)
+      1. xdotool + ImageMagick import (window-specific)
+      2. scrot (focused window)
+      3. PIL ImageGrab (Python-only, no system deps)
+
+    Also checks for runtime errors and saves them to runtime_error.txt.
     """
     log.info("Running %s for %.0fs to capture screenshot…", code_path, display_seconds)
 
@@ -150,7 +152,27 @@ def _capture_output_screenshot(
         stderr=subprocess.PIPE,
     )
 
-    time.sleep(display_seconds)
+    # Check if process crashes quickly (before display timeout)
+    try:
+        proc.wait(timeout=min(2.0, display_seconds))
+        # Process exited already — likely a crash
+        stderr_output = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+        if proc.returncode != 0:
+            error_path = code_path.parent / "runtime_error.txt"
+            error_path.write_text(f"Exit code: {proc.returncode}\n\n{stderr_output}")
+            log.error("❌ %s crashed (exit %d): %s", code_path.name, proc.returncode,
+                      stderr_output.strip().split("\n")[-1] if stderr_output.strip() else "unknown error")
+            return False
+        # Exited cleanly (maybe a non-GUI script)
+        log.info("Process exited cleanly (exit 0) before display timeout.")
+        return False
+    except subprocess.TimeoutExpired:
+        pass  # Still running — good, it's a GUI app
+
+    # Wait remaining display time
+    remaining = display_seconds - 2.0
+    if remaining > 0:
+        time.sleep(remaining)
 
     # Try capture strategies in order of reliability
     captured = False
@@ -181,18 +203,35 @@ def _capture_output_screenshot(
         proc.kill()
         proc.wait()
 
+    # Capture any stderr even if the process was running
+    stderr_output = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+    if stderr_output.strip():
+        error_path = code_path.parent / "runtime_error.txt"
+        error_path.write_text(f"Exit code: {proc.returncode}\n\n{stderr_output}")
+        if proc.returncode != 0:
+            log.warning("⚠️  %s had errors (exit %d)", code_path.name, proc.returncode)
+        else:
+            log.info("Process had stderr output (saved to runtime_error.txt)")
+
     return captured
 
 
 def _run_outputs(run_dir: Path, display_seconds: float = 5.0) -> None:
     """Find and run all output.py files in a run directory, capturing screenshots."""
+    crashed = []
     for model_dir in sorted(run_dir.iterdir()):
         if not model_dir.is_dir():
             continue
         code_path = model_dir / "output.py"
         if code_path.exists():
             screenshot_path = model_dir / "screenshot.png"
-            _capture_output_screenshot(code_path, screenshot_path, display_seconds)
+            success = _capture_output_screenshot(code_path, screenshot_path, display_seconds)
+            error_path = model_dir / "runtime_error.txt"
+            if error_path.exists():
+                crashed.append(model_dir.name)
+
+    if crashed:
+        log.warning("⚠️  Runtime errors in: %s (see runtime_error.txt in each dir)", ", ".join(crashed))
 
 
 # ── Summary printing ────────────────────────────────────────────

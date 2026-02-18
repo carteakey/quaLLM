@@ -51,7 +51,7 @@ def run_prompt(
     model: ModelConfig,
     prompt: PromptConfig,
     max_tokens: int = 16384,
-    timeout: float = 600,
+    timeout: float = 1800,
 ) -> RunResult:
     """Send a prompt to the model's OpenAI-compatible API and collect results.
 
