@@ -1,6 +1,6 @@
-name: "GPT-OSS-120B"
-alias: "ggml-org/gpt-oss-120b"
-model_path: "/home/kchauhan/models/ggml-org/gpt-oss-120b-GGUF/gpt-oss-120b-mxfp4-00001-of-00003.gguf"
+name: "GPT-OSS-20B-High"
+alias: "ggml-org/gpt-oss-20b"
+model_path: "/home/kchauhan/models/ggml-org/gpt-oss-20b-GGUF/gpt-oss-20b-mxfp4.gguf"
 port: 8001
 api_key: "dummy"
 server_binary: "./vendor/llama.cpp/build/bin/llama-server"
