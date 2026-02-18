@@ -88,15 +88,59 @@ def _blindify(results: list[RunResult]) -> tuple[list[RunResult], dict]:
 
 
 # ── Run output.py with screenshot capture ───────────────────────
+def _screenshot_pil(screenshot_path: Path) -> bool:
+    """Capture screenshot using PIL ImageGrab (no system deps needed)."""
+    try:
+        from PIL import ImageGrab
+        img = ImageGrab.grab()
+        img.save(str(screenshot_path))
+        return True
+    except Exception:
+        return False
+
+
+def _screenshot_xdotool(pid: int, screenshot_path: Path) -> bool:
+    """Capture a specific window screenshot using xdotool + ImageMagick import."""
+    try:
+        result = subprocess.run(
+            ["xdotool", "search", "--pid", str(pid)],
+            capture_output=True, text=True, timeout=3,
+        )
+        window_ids = result.stdout.strip().split("\n")
+        if window_ids and window_ids[0]:
+            subprocess.run(
+                ["import", "-window", window_ids[-1], str(screenshot_path)],
+                timeout=5,
+            )
+            return screenshot_path.exists()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return False
+
+
+def _screenshot_scrot(screenshot_path: Path) -> bool:
+    """Capture focused window using scrot."""
+    try:
+        subprocess.run(
+            ["scrot", "-u", str(screenshot_path)],
+            timeout=5,
+        )
+        return screenshot_path.exists()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
 def _capture_output_screenshot(
     code_path: Path,
     screenshot_path: Path,
     display_seconds: float = 5.0,
 ) -> bool:
-    """Run an output.py file, wait, then capture a screenshot of the window.
+    """Run an output.py file, wait, then capture a screenshot.
 
-    Uses xdotool + import (ImageMagick) on Linux to grab the window.
-    Falls back to just running the script if no screenshot tools available.
+    Tries multiple capture strategies in order:
+      1. PIL ImageGrab (Python-only, no system deps)
+      2. xdotool + ImageMagick import (window-specific)
+      3. scrot (focused window)
     """
     log.info("Running %s for %.0fs to capture screenshot…", code_path, display_seconds)
 
@@ -108,32 +152,26 @@ def _capture_output_screenshot(
 
     time.sleep(display_seconds)
 
-    # Try to capture screenshot via ImageMagick import + xdotool
-    try:
-        # Find the window by PID
-        result = subprocess.run(
-            ["xdotool", "search", "--pid", str(proc.pid)],
-            capture_output=True, text=True, timeout=3,
-        )
-        window_ids = result.stdout.strip().split("\n")
+    # Try capture strategies in order of reliability
+    captured = False
 
-        if window_ids and window_ids[0]:
-            # Capture the window
-            subprocess.run(
-                ["import", "-window", window_ids[-1], str(screenshot_path)],
-                timeout=5,
-            )
-            log.info("Screenshot saved: %s", screenshot_path)
-        else:
-            # Fallback: capture entire screen region
-            subprocess.run(
-                ["import", "-window", "root", str(screenshot_path)],
-                timeout=5,
-            )
-            log.info("Full-screen screenshot saved: %s", screenshot_path)
+    if not captured:
+        captured = _screenshot_xdotool(proc.pid, screenshot_path)
+        if captured:
+            log.info("Screenshot saved (xdotool): %s", screenshot_path)
 
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        log.warning("Screenshot capture failed (%s). Install xdotool + imagemagick for auto-screenshots.", e)
+    if not captured:
+        captured = _screenshot_scrot(screenshot_path)
+        if captured:
+            log.info("Screenshot saved (scrot): %s", screenshot_path)
+
+    if not captured:
+        captured = _screenshot_pil(screenshot_path)
+        if captured:
+            log.info("Screenshot saved (PIL): %s", screenshot_path)
+
+    if not captured:
+        log.warning("Screenshot capture failed. Install one of: Pillow, xdotool+imagemagick, or scrot.")
 
     # Kill the tkinter window
     try:
@@ -143,7 +181,7 @@ def _capture_output_screenshot(
         proc.kill()
         proc.wait()
 
-    return screenshot_path.exists()
+    return captured
 
 
 def _run_outputs(run_dir: Path, display_seconds: float = 5.0) -> None:
