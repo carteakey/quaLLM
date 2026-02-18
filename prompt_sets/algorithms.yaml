@@ -1,0 +1,13 @@
+name: "Algorithms"
+description: "Classic algorithm implementations — greedy, DP, optimization"
+eval_type: auto
+prompts:
+  - prompts/coin_change_greedy.txt
+  - prompts/coin_change_dp.txt
+  - prompts/coin_change_dp_recovery.txt
+  - prompts/knapsack_greedy.txt
+  - prompts/knapsack_dp.txt
+  - prompts/knapsack_dp_recovery.txt
+  - prompts/rod_cutting.txt
+  - prompts/stack_boxes.txt
+  - prompts/weighted_interval_scheduling.txt

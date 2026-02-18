@@ -1,0 +1,14 @@
+Consider a variant of the knapsack problem where the objective is to select from a list of items with infinite supply while obeying capacity limitations. For instance, let values = [10, 15, 40, 55], weights = [1, 2, 3, 5] and capacity = 5. Then the optimal value is 60, and solution (in dictionary format) is {0 : 2, 2 : 1}, i.e., use 2 of item 0 and 1 of item 2.
+
+Implement a greedy algorithm that first ranks the items based on their "value per weight" ratios (i.e., vi/wi), then puts the maximum number of items with the best ratio into the knapsack, and moves to the next items according to the ratio until the knapsack is filled. For instance, in the above example, ratios = [10, 7.5, 13.33, 11], so we first include 1 of item 2, then include 2 of item 0 (since the remaining capacity after including 1 of item 2 is 2).
+
+Sample function call and expected inputs/outputs are provided below.
+
+```python
+values = [10, 15, 40, 55]
+weights = [1, 2, 3, 5]
+capacity = 5
+
+total_value, selected_items = knapsack_extension_greedy(values, weights, capacity)
+print(f"Total value: {total_value}, Selected items: {selected_items}")
+```

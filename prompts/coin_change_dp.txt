@@ -1,0 +1,14 @@
+Implement a dynamic programming algorithm for the coin change problem that outputs the minimal number of coins required and the corresponding dynamic programming table.
+
+The problem: make a target amount using the fewest number of coins from an infinite supply of coins of different denominations.
+
+Sample function call and expected inputs/outputs are provided below.
+
+```python
+coins = [1, 2, 5, 10]
+amount = 19
+min_coins_dp, dp_table = coin_change_DP(coins, amount)
+
+print("min_coins_dp =", min_coins_dp)
+print("dp_table =", dp_table)
+```

@@ -1,0 +1,8 @@
+1. Generate a toy classification problem dataset for the cartesian coordinate system with two classes (K=2).
+    1. Pick two random class center coordinates.
+    2. For each cluster center, generate 20 data points (samples) by adding random noise values to class center values.
+    3. Store dataset X along with ground truth label values for each sample.
+    4. Shuffle the dataset (randomize the order of samples in your dataset).
+    5. Separate your dataset X into training and test sets.
+2. Implement the classification decision tree algorithm from scratch (using Gini index for splitting) and generate a tree using your training set. Do not use sklearn's DecisionTreeClassifier — build your own.
+3. Report performance on prediction of training set and test set labels.

@@ -3,27 +3,20 @@
 
 Usage examples:
 
-  # Run bouncing balls on both models (framework manages servers):
+  # Run a single prompt:
   python run_eval.py \\
       --models model_configs/gpt_oss_120b.yaml model_configs/qwen3_coder_next.yaml \\
       --prompt prompts/bouncing_balls.txt
 
-  # Models already running — skip server orchestration:
-  python run_eval.py \\
-      --models model_configs/qwen3_coder_next.yaml \\
-      --prompt prompts/bouncing_balls.txt \\
-      --no-start-server
-
-  # Run outputs and capture screenshots:
+  # Run an entire prompt set:
   python run_eval.py \\
       --models model_configs/gpt_oss_120b.yaml model_configs/qwen3_coder_next.yaml \\
-      --prompt prompts/bouncing_balls.txt \\
-      --run-outputs
+      --prompt-set prompt_sets/algorithms.yaml
 
-  # Blind evaluation (anonymized model names):
+  # Blind evaluation with screenshot capture:
   python run_eval.py \\
       --models model_configs/gpt_oss_120b.yaml model_configs/qwen3_coder_next.yaml \\
-      --prompt prompts/bouncing_balls.txt \\
+      --prompt-set prompt_sets/vibe_coding.yaml \\
       --blind --run-outputs
 """
 
@@ -37,6 +30,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+import yaml
 
 from quallm.config import load_model_config, load_prompt, ModelConfig
 from quallm.orchestrator import start_server, stop_server, is_server_ready
@@ -193,6 +188,13 @@ def _dummy_results(models: list[ModelConfig], prompt_name: str) -> list[RunResul
     ]
 
 
+def _load_prompt_set(path: str) -> list[str]:
+    """Load a prompt set YAML and return list of prompt file paths."""
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return data.get("prompts", [])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="quaLLM — evaluate prompts across multiple models",
@@ -204,10 +206,14 @@ def main() -> None:
         required=True,
         help="Paths to model config YAML files",
     )
-    parser.add_argument(
+    prompt_group = parser.add_mutually_exclusive_group(required=True)
+    prompt_group.add_argument(
         "--prompt", "-p",
-        required=True,
-        help="Path to prompt file (.txt or .yaml)",
+        help="Path to a single prompt file (.txt or .yaml)",
+    )
+    prompt_group.add_argument(
+        "--prompt-set",
+        help="Path to a prompt set YAML (runs all prompts in the set)",
     )
     parser.add_argument(
         "--no-start-server",
@@ -252,72 +258,90 @@ def main() -> None:
 
     # ── Load configs ────────────────────────────────────────────
     models = [load_model_config(p) for p in args.models]
-    prompt = load_prompt(args.prompt)
 
-    log.info("Prompt: %s (%s eval)", prompt.name, prompt.eval_type)
+    # Resolve prompt list (single prompt or prompt set)
+    if args.prompt_set:
+        prompt_paths = _load_prompt_set(args.prompt_set)
+        log.info("Prompt set: %s (%d prompts)", args.prompt_set, len(prompt_paths))
+    else:
+        prompt_paths = [args.prompt]
+
+    prompts = [load_prompt(p) for p in prompt_paths]
+
     for m in models:
         log.info("Model:  %s  (port %d)", m.name, m.port)
 
-    if args.dry_run:
-        log.info("*** DRY RUN — generating dummy results ***")
-        results = _dummy_results(models, prompt.name)
-    else:
-        # ── Run each model sequentially ─────────────────────────
-        results: list[RunResult] = []
+    # ── Run each prompt ─────────────────────────────────────────
+    all_run_dirs = []
 
-        for model in models:
-            proc = None
-            try:
-                if not args.no_start_server:
-                    log.info("Starting server for %s …", model.name)
-                    proc = start_server(model, log_file=str(args.output_dir / f"{model.safe_name}_server.log"))
-                else:
-                    # Verify server is reachable
-                    if not is_server_ready(model.port):
-                        log.error("Server for %s not reachable on port %d", model.name, model.port)
-                        sys.exit(1)
+    for prompt in prompts:
+        log.info("─" * 60)
+        log.info("Prompt: %s (%s eval)", prompt.name, prompt.eval_type)
 
-                result = run_prompt(model, prompt, max_tokens=args.max_tokens)
-                results.append(result)
+        if args.dry_run:
+            log.info("*** DRY RUN — generating dummy results ***")
+            results = _dummy_results(models, prompt.name)
+        else:
+            results: list[RunResult] = []
 
-            finally:
-                if proc is not None:
-                    stop_server(proc)
+            for model in models:
+                proc = None
+                try:
+                    if not args.no_start_server:
+                        log.info("Starting server for %s …", model.name)
+                        proc = start_server(model, log_file=str(args.output_dir / f"{model.safe_name}_server.log"))
+                    else:
+                        if not is_server_ready(model.port):
+                            log.error("Server for %s not reachable on port %d", model.name, model.port)
+                            sys.exit(1)
 
-    # ── Blind mode ──────────────────────────────────────────────
-    blind_key = None
-    if args.blind:
-        results, blind_key = _blindify(results)
-        log.info("🔒 Blind mode: model identities anonymized")
+                    result = run_prompt(model, prompt, max_tokens=args.max_tokens)
+                    results.append(result)
 
-    # ── Save results ────────────────────────────────────────────
-    run_dir = save_run(results, prompt.name, output_dir=args.output_dir)
+                finally:
+                    if proc is not None:
+                        stop_server(proc)
 
-    # Save blind key separately (sealed — don't peek until eval is done!)
-    if blind_key:
-        blind_path = run_dir / "blind_key.json"
-        blind_path.write_text(json.dumps(blind_key, indent=2))
-        log.info("🔑 Blind key saved to %s (open AFTER scoring!)", blind_path)
+        # ── Blind mode ──────────────────────────────────────────
+        blind_key = None
+        if args.blind:
+            results, blind_key = _blindify(results)
+            log.info("🔒 Blind mode: model identities anonymized")
 
-    # ── Generate plots ──────────────────────────────────────────
-    plot_comparison(results, run_dir / "comparison.png")
-    plot_summary_table(results, run_dir / "summary_table.png")
+        # ── Save results ────────────────────────────────────────
+        run_dir = save_run(results, prompt.name, output_dir=args.output_dir)
+        all_run_dirs.append(run_dir)
 
-    # ── Run outputs + capture screenshots ───────────────────────
-    if args.run_outputs and prompt.extract_code and prompt.eval_type == "human":
-        _run_outputs(run_dir, display_seconds=args.display_seconds)
+        if blind_key:
+            blind_path = run_dir / "blind_key.json"
+            blind_path.write_text(json.dumps(blind_key, indent=2))
+            log.info("🔑 Blind key saved to %s (open AFTER scoring!)", blind_path)
 
-    # ── Print summary ───────────────────────────────────────────
-    _print_summary(results)
-    log.info("Results saved to: %s", run_dir)
+        # ── Generate plots ──────────────────────────────────────
+        plot_comparison(results, run_dir / "comparison.png")
+        plot_summary_table(results, run_dir / "summary_table.png")
 
-    # Hint about running code outputs
-    if prompt.extract_code and prompt.eval_type == "human" and not args.run_outputs:
-        for r in results:
-            safe = r.model_name.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
-            code_path = run_dir / safe / "output.py"
-            if code_path.exists():
-                log.info("Run visual eval: python %s", code_path)
+        # ── Run outputs + capture screenshots ───────────────────
+        if args.run_outputs and prompt.extract_code and prompt.eval_type == "human":
+            _run_outputs(run_dir, display_seconds=args.display_seconds)
+
+        # ── Print summary ───────────────────────────────────────
+        _print_summary(results)
+        log.info("Results saved to: %s", run_dir)
+
+        if prompt.extract_code and prompt.eval_type == "human" and not args.run_outputs:
+            for r in results:
+                safe = r.model_name.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
+                code_path = run_dir / safe / "output.py"
+                if code_path.exists():
+                    log.info("Run visual eval: python %s", code_path)
+
+    # ── Final summary ───────────────────────────────────────────
+    if len(all_run_dirs) > 1:
+        log.info("═" * 60)
+        log.info("Prompt set complete: %d prompts evaluated", len(all_run_dirs))
+        for d in all_run_dirs:
+            log.info("  📁 %s", d)
 
     if args.blind:
         print("🔒 Models are anonymized. Score them first, then check blind_key.json!")

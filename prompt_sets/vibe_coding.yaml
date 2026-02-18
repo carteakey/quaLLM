@@ -1,0 +1,9 @@
+name: "Vibe Coding"
+description: "Visual tkinter apps testing physics simulation, animation, and interactivity"
+eval_type: human
+prompts:
+  - prompts/bouncing_balls.txt
+  - prompts/rotating_wireframe_cube.txt
+  - prompts/double_pendulum.txt
+  - prompts/particle_fireworks.txt
+  - prompts/conways_game_of_life.txt

@@ -1,0 +1,5 @@
+name: "ML From Scratch"
+description: "Implement ML algorithms from scratch without sklearn"
+eval_type: auto
+prompts:
+  - prompts/decision_tree.txt

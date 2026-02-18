@@ -1,0 +1,5 @@
+Given a rod of length n and a list of prices p, where p[i] is the price of a rod of length i+1, the Rod Cutting problem involves maximizing the profit by cutting the rod into pieces and selling those pieces. Use Dynamic Programming to solve the problem instance with n = 4 and p = [1, 5, 8, 9], and report the maximum profit.
+
+Hint: you can use the following DP formulation. dp[i] is the maximum profit for a rod of length i; base case is dp[0] = 0; solve for i from 1 to n using the DP recursion dp[i] = max(p[j] + dp[i - j - 1]) for all j < i; one of dp[0], dp[1], ..., dp[4] gives you the maximum profit.
+
+Implement the solution in Python and print the maximum profit.

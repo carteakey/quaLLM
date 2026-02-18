@@ -1,0 +1,37 @@
+The following Python code calculates determinants using numpy library and PLU decomposition from scipy. However, the swap calculation in the permutation matrix is incorrect and fails for certain matrices.
+
+```python
+from datetime import datetime
+import numpy as np
+import math
+import scipy
+
+def determinant_calculation_comparison(matrix_a):
+    start_time_np = datetime.now()
+    np_det = round(np.linalg.det(matrix_a), 2)
+    time_np = (datetime.now() - start_time_np).total_seconds()
+
+    P, lower_mat, upper_mat = scipy.linalg.lu(matrix_a)
+    start_time_plu = datetime.now()
+    plu_det = 1
+    n_dim = len(P)
+
+    swaps = sum([1 for i in range(len(P)) if i != list(P[i]).index(1)])
+    det_P = math.pow(-1, swaps)
+
+    for i in range(n_dim):
+        plu_det *= lower_mat[i][i] * upper_mat[i][i]
+
+    plu_det = det_P * plu_det
+    time_plu = (datetime.now() - start_time_plu).total_seconds()
+
+    return np_det, time_np, plu_det, time_plu
+```
+
+The swap calculation is wrong and fails for these test cases:
+```python
+A = np.array([[2, 5, 8, 7], [5, 2, 2, 8], [7, 5, 6, 6], [5, 4, 4, 8]])
+A = np.array([[2, 1, 3], [1, 0, 2], [2, 0, -2]])
+```
+
+Fix the swap calculation so that the PLU decomposition determinant matches numpy's determinant for all test matrices. Implement a time-efficient solution.
