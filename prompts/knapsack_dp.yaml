@@ -1,0 +1,30 @@
+name: "Knapsack DP"
+eval_type: auto
+extract_code: true
+
+user_prompt: |
+  Implement a dynamic programming algorithm for the unbounded knapsack problem that outputs the optimal value and the corresponding dynamic programming table.
+
+  The problem: select from a list of items with infinite supply while obeying capacity limitations, maximizing total value.
+
+  Sample function call and expected inputs/outputs are provided below.
+
+  ```python
+  values = [10, 15, 40, 55]
+  weights = [1, 2, 3, 5]
+  capacity = 5
+
+  total_value_dp, dp_table = knapsack_extension_dp(values, weights, capacity)
+  print(f"total_value_DP: {total_value_dp}")
+  print(dp_table)
+  ```
+
+expected_output:
+  - "total_value_DP: 60"
+
+test_harness: |
+  values = [10, 15, 40, 55]
+  weights = [1, 2, 3, 5]
+  capacity = 5
+  total_value_dp, dp_table = knapsack_extension_dp(values, weights, capacity)
+  print(f"total_value_DP: {total_value_dp}")

@@ -2,4 +2,4 @@ name: "Debugging"
 description: "Fix broken code — tests reasoning about existing code and correctness"
 eval_type: auto
 prompts:
-  - prompts/plu_debugging.txt
+  - prompts/plu_debugging.yaml

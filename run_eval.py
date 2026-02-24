@@ -38,6 +38,7 @@ from quallm.orchestrator import start_server, stop_server, is_server_ready
 from quallm.runner import run_prompt, RunResult
 from quallm.results import save_run, RESULTS_DIR
 from quallm.plotting import plot_comparison, plot_summary_table
+from quallm.scorer import score_output
 
 logging.basicConfig(
     level=logging.INFO,
@@ -235,15 +236,23 @@ def _run_outputs(run_dir: Path, display_seconds: float = 5.0) -> None:
 
 
 # ── Summary printing ────────────────────────────────────────────
-def _print_summary(results: list[RunResult]) -> None:
+def _print_summary(results: list[RunResult], scores: dict | None = None) -> None:
     """Print a quick ascii summary table."""
-    hdr = f"{'Model':<25} {'Gen tk/s':>10} {'Prompt tk/s':>12} {'Tokens':>8} {'Time (s)':>10}"
+    show_score = bool(scores)
+    hdr = (
+        f"{'Model':<25} {'Gen tk/s':>10} {'Prompt tk/s':>12} {'Tokens':>8} {'Time (s)':>10}"
+        + (f" {'Score':>7}" if show_score else "")
+    )
     print("\n" + "=" * len(hdr))
     print(hdr)
     print("-" * len(hdr))
     for r in results:
+        score_col = ""
+        if show_score and r.model_name in scores:
+            sc = scores[r.model_name]["score"]
+            score_col = f" {sc:>6d}%"
         print(f"{r.model_name:<25} {r.gen_tk_s:>10.1f} {r.prompt_tk_s:>12.1f} "
-              f"{r.completion_tokens:>8} {r.total_time_s:>10.1f}")
+              f"{r.completion_tokens:>8} {r.total_time_s:>10.1f}{score_col}")
     print("=" * len(hdr) + "\n")
 
 
@@ -265,11 +274,11 @@ def _dummy_results(models: list[ModelConfig], prompt_name: str) -> list[RunResul
     ]
 
 
-def _load_prompt_set(path: str) -> list[str]:
-    """Load a prompt set YAML and return list of prompt file paths."""
+def _load_prompt_set(path: str) -> tuple[list[str], dict]:
+    """Load a prompt set YAML and return (list of prompt paths, prompt set metadata)."""
     with open(path) as f:
         data = yaml.safe_load(f)
-    return data.get("prompts", [])
+    return data.get("prompts", []), data
 
 
 def main() -> None:
@@ -338,12 +347,21 @@ def main() -> None:
 
     # Resolve prompt list (single prompt or prompt set)
     if args.prompt_set:
-        prompt_paths = _load_prompt_set(args.prompt_set)
+        prompt_paths, prompt_set_meta = _load_prompt_set(args.prompt_set)
+        set_eval_type = prompt_set_meta.get("eval_type")
         log.info("Prompt set: %s (%d prompts)", args.prompt_set, len(prompt_paths))
     else:
         prompt_paths = [args.prompt]
+        set_eval_type = None
 
     prompts = [load_prompt(p) for p in prompt_paths]
+
+    # Propagate prompt-set-level eval_type to individual prompts that were
+    # loaded from plain .txt files (which default to "human").
+    if set_eval_type:
+        for p in prompts:
+            if p.eval_type == "human":
+                p.eval_type = set_eval_type
 
     for m in models:
         log.info("Model:  %s  (port %d)", m.name, m.port)
@@ -398,12 +416,30 @@ def main() -> None:
         plot_comparison(results, run_dir / "comparison.png")
         plot_summary_table(results, run_dir / "summary_table.png")
 
+        # ── Auto-score (eval_type == "auto") ────────────────────
+        scores: dict | None = None
+        if prompt.eval_type == "auto":
+            log.info("Auto-scoring %s …", prompt.name)
+            scores = {}
+            for r in results:
+                safe = r.model_name.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
+                code_path = run_dir / safe / "output.py"
+                sc, verdict = score_output(
+                    code_path,
+                    prompt.expected_output,
+                    prompt.test_harness,
+                )
+                scores[r.model_name] = {"score": sc, "verdict": verdict}
+                log.info("  %-25s → %3d/100  %s", r.model_name, sc, verdict)
+
+            (run_dir / "scores.json").write_text(json.dumps(scores, indent=2))
+
         # ── Run outputs + capture screenshots ───────────────────
         if args.run_outputs and prompt.extract_code and prompt.eval_type == "human":
             _run_outputs(run_dir, display_seconds=args.display_seconds)
 
         # ── Print summary ───────────────────────────────────────
-        _print_summary(results)
+        _print_summary(results, scores)
         log.info("Results saved to: %s", run_dir)
 
         if prompt.extract_code and prompt.eval_type == "human" and not args.run_outputs:

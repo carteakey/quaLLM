@@ -1,0 +1,31 @@
+name: "Coin Change DP Recovery"
+eval_type: auto
+extract_code: true
+
+user_prompt: |
+  Implement a function that recovers the solution (i.e., selected coins and their quantities) from the dynamic programming table obtained from a coin change DP algorithm. Sort the final solution to obtain a sorted dictionary.
+
+  Sample function call and expected inputs/outputs are provided below.
+
+  ```python
+  dp_solution = coin_change_DP_solution(dp_table, amount, coins)
+
+  # dp_solution= {10: 1, 5: 1, 2: 2} -> output a sorted dictionary based on the keys
+  ```
+
+expected_output:
+  - "{10: 1, 5: 1, 2: 2}"
+
+test_harness: |
+  # Build a standard 1-D DP table for coins=[1,2,5,10], amount=19
+  _coins = [1, 2, 5, 10]
+  _amount = 19
+  _dp = [float('inf')] * (_amount + 1)
+  _dp[0] = 0
+  for _i in range(1, _amount + 1):
+      for _c in _coins:
+          if _c <= _i and _dp[_i - _c] + 1 < _dp[_i]:
+              _dp[_i] = _dp[_i - _c] + 1
+  dp_solution = coin_change_DP_solution(_dp, _amount, _coins)
+  dp_solution = dict(sorted(dp_solution.items(), reverse=True))
+  print(f"dp_solution= {dp_solution}")

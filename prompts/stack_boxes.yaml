@@ -1,0 +1,25 @@
+name: "Stack Boxes"
+eval_type: auto
+extract_code: true
+
+user_prompt: |
+  You are tasked with identifying the order in which a set of wooden boxes should be stacked to form the highest stack. Each one of the boxes has a different weight and strength, but identical height. Your objective is to build the largest stack of boxes possible such that for every box in the stack, its strength is no less than the total weight that it carries above it. You are given the weight and the strength of each box. The strength is the box's overall carrying capacity, including its own weight. That is, a box weighing 200 units with a strength of 600 units could carry other boxes weighing a total of 400 units on top of it. Your implementation should output the maximum number of boxes that can be stacked without exceeding the strength of any one of the boxes.
+
+  Sample function call and expected inputs/outputs are provided below.
+
+  ```python
+  weights = [100, 150, 250, 100, 200, 400, 300]
+  strengths = [ 600, 750, 500, 300, 800, 1200, 1000]
+  num_boxes = StackBoxes(weights, strengths) # num_boxes = 6
+  ```
+
+  Implement a dynamic programming solution for this problem.
+
+expected_output:
+  - "SCORE: num_boxes = 6"
+
+test_harness: |
+  weights = [100, 150, 250, 100, 200, 400, 300]
+  strengths = [600, 750, 500, 300, 800, 1200, 1000]
+  result = StackBoxes(weights, strengths)
+  print(f"SCORE: num_boxes = {result}")

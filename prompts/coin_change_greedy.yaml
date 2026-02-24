@@ -1,0 +1,31 @@
+name: "Coin Change Greedy"
+eval_type: auto
+extract_code: true
+
+user_prompt: |
+  Consider a coin change problem where the task is to make a target amount using the fewest number of coins from an infinite supply of coins of different denominations. For instance, let coins = [1, 2, 5, 10] and amount = 19. Then the minimal number of coins required is 4, and the solution (in dictionary format) is {10 : 1, 5 : 1, 2 : 2}, i.e., use 1 of coin 10, 1 of coin 5, and 2 of coin 2.
+
+  Implement a greedy algorithm that first ranks the coins in descending order, then selects the maximum possible number of the highest denomination coin, and moves to the next coin denomination until the amount is achieved. For instance, in the above example, we first select 1 of coin 10, then 1 of coin 5, and finally 2 of coin 2.
+
+  Sample function call and expected inputs/outputs are provided below.
+
+  ```python
+  coins = [1, 2, 5, 10]
+  amount = 19
+
+  min_coins, selected_coins = coin_change_greedy(coins, amount)
+  print("min_coins =", min_coins, ", selected_coins =", selected_coins)
+
+  #min_coins = 4, selected_coins= {10: 1, 5: 1, 2: 2} -> output sorted dictionary based on keys
+  ```
+
+expected_output:
+  - "min_coins = 4"
+  - "{10: 1, 5: 1, 2: 2}"
+
+test_harness: |
+  coins = [1, 2, 5, 10]
+  amount = 19
+  min_coins, selected_coins = coin_change_greedy(coins, amount)
+  selected_coins = dict(sorted(selected_coins.items(), reverse=True))
+  print(f"min_coins = {min_coins} , selected_coins= {selected_coins}")

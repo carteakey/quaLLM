@@ -4,10 +4,10 @@ Roadmap and task list for quaLLM / CAKEbench.
 
 ## 🔥 High Priority
 
-- [ ] **Auto-scorer** — run `output.py`, assert expected values, compute per-prompt score (0–100)
+- [x] **Auto-scorer** — run `output.py`, assert expected values, compute per-prompt score (0–100)
 - [ ] **CAKE score aggregation** — weighted average across prompt sets (Algos 35%, Vibe 25%, Debug 20%, ML 20%)
 - [ ] **Leaderboard generator** — render markdown + image leaderboard from scored results
-- [ ] **Expected outputs** — add expected stdout / assertions to algorithm and debugging prompts
+- [x] **Expected outputs** — algorithm + debugging prompts converted to YAML with `expected_output` + `test_harness`
 
 ## 🛠️ Medium Priority
 

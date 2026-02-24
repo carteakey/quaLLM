@@ -1,0 +1,39 @@
+name: "Knapsack DP Recovery"
+eval_type: auto
+extract_code: true
+
+user_prompt: |
+  Implement a function that recovers the solution (i.e., selected items and their quantities) from the dynamic programming table obtained from an unbounded knapsack DP algorithm.
+
+  Given inputs:
+  ```python
+  import numpy as np
+
+  dp_table = np.array([[0, 10, 20, 30, 40, 50,],
+   [0, 10, 20, 30, 40, 50,],
+   [0, 10, 20, 40, 50, 60,],
+   [0, 10, 20, 40, 50, 60,]])
+  capacity = 5
+  weights = [1, 2, 3, 5]
+  ```
+
+  Call the function:
+  ```python
+  dp_solution = knapsack_extension_DP_solution(dp_table, capacity, weights)
+  print(f"dp_solution = {dp_solution}")
+  ```
+
+expected_output:
+  - "0: 2"
+  - "2: 1"
+
+test_harness: |
+  import numpy as np
+  dp_table = np.array([[0, 10, 20, 30, 40, 50],
+                       [0, 10, 20, 30, 40, 50],
+                       [0, 10, 20, 40, 50, 60],
+                       [0, 10, 20, 40, 50, 60]])
+  capacity = 5
+  weights = [1, 2, 3, 5]
+  dp_solution = knapsack_extension_DP_solution(dp_table, capacity, weights)
+  print(f"dp_solution = {dp_solution}")

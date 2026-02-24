@@ -7,6 +7,9 @@ from typing import Optional
 import yaml
 
 
+
+
+
 @dataclass
 class ModelConfig:
     """Configuration for a model served via llama-server."""
@@ -50,6 +53,13 @@ class PromptConfig:
     system_prompt: str = "You are a helpful assistant. Respond only with the requested code, no explanations."
     eval_type: str = "human"          # "human" or "auto"
     extract_code: bool = True         # try to extract code blocks from response
+
+    # Auto-scoring fields (only used when eval_type == "auto")
+    # List of substrings that must all appear in stdout for a passing score.
+    expected_output: list = field(default_factory=list)
+    # Extra Python code appended to extracted code before the scoring run.
+    # Use this to provide a consistent test invocation the scorer can rely on.
+    test_harness: str = ""
 
 
 def load_model_config(path: str | Path) -> ModelConfig:
